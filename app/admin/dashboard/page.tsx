@@ -129,8 +129,8 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-xl text-gray-600">Loading...</div>
+      <main className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-xl text-gray-300">Loading...</div>
       </main>
     )
   }
@@ -139,27 +139,27 @@ export default function AdminDashboard() {
   const archivedSessions = sessions.filter(s => s.archived)
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4">
+    <main className="min-h-screen bg-gray-900 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
           <button
             onClick={handleLogout}
-            className="text-sm text-gray-600 hover:text-gray-800 underline"
+            className="text-sm text-gray-400 hover:text-white underline"
           >
             Logout
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded mb-6">
             {error}
           </div>
         )}
 
         {/* Active Sessions */}
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Active Sessions</h2>
+        <h2 className="text-xl font-semibold text-white mb-4">Active Sessions</h2>
         {activeSessions.length === 0 ? (
           <p className="text-gray-500 mb-8">No active sessions</p>
         ) : (
@@ -179,7 +179,7 @@ export default function AdminDashboard() {
         {/* Archived Sessions */}
         {archivedSessions.length > 0 && (
           <>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 mt-8">Archived Sessions</h2>
+            <h2 className="text-xl font-semibold text-white mb-4 mt-8">Archived Sessions</h2>
             {archivedSessions.map((session) => (
               <SessionCard
                 key={session.id}
@@ -221,23 +221,23 @@ function SessionCard({
   const paidCount = session.players.filter(p => p.paid).length
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg p-6 mb-6 ${isArchived ? 'opacity-70' : ''}`}>
+    <div className={`bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700 ${isArchived ? 'opacity-60' : ''}`}>
       {/* Session Header */}
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{formatDate(session.date)}</h3>
-          <p className="text-sm text-gray-600">
+          <h3 className="text-lg font-semibold text-white">{formatDate(session.date)}</h3>
+          <p className="text-sm text-gray-400">
             {session.players.length}/{session.max_players} Players | {paidCount} Paid
           </p>
         </div>
         <div className="flex items-center gap-4">
           {/* Court Selector */}
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Courts:</label>
+            <label className="text-sm text-gray-400">Courts:</label>
             <select
               value={session.courts}
               onChange={(e) => onCourtChange(session.id, parseInt(e.target.value))}
-              className="border border-gray-300 rounded px-2 py-1 text-sm"
+              className="bg-gray-700 border border-gray-600 text-white rounded px-2 py-1 text-sm"
               disabled={isArchived}
             >
               <option value={2}>2 (14 max)</option>
@@ -249,8 +249,8 @@ function SessionCard({
             onClick={() => onArchive(session.id, !isArchived)}
             className={`text-sm px-3 py-1 rounded ${
               isArchived
-                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-green-900/50 text-green-400 hover:bg-green-900/70'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             {isArchived ? 'Unarchive' : 'Archive'}
@@ -260,21 +260,21 @@ function SessionCard({
 
       {/* Player List */}
       <div className="mb-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Players</h4>
+        <h4 className="text-sm font-medium text-gray-300 mb-2">Players</h4>
         {session.players.length === 0 ? (
-          <p className="text-gray-400 text-sm">No players signed up</p>
+          <p className="text-gray-500 text-sm">No players signed up</p>
         ) : (
           <div className="space-y-2">
             {session.players.map((player, index) => (
               <div
                 key={player.id}
-                className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded"
+                className="flex items-center justify-between py-2 px-3 bg-gray-700/50 rounded"
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs font-medium">
+                  <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
                     {index + 1}
                   </span>
-                  <span className="text-gray-900">{player.name}</span>
+                  <span className="text-gray-100">{player.name}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1 cursor-pointer">
@@ -282,15 +282,15 @@ function SessionCard({
                       type="checkbox"
                       checked={player.paid}
                       onChange={() => onTogglePaid(player.id, player.paid)}
-                      className="w-4 h-4 text-green-600 rounded"
+                      className="w-4 h-4 text-green-600 bg-gray-700 border-gray-600 rounded"
                     />
-                    <span className={`text-sm ${player.paid ? 'text-green-600' : 'text-gray-400'}`}>
+                    <span className={`text-sm ${player.paid ? 'text-green-400' : 'text-gray-500'}`}>
                       Paid
                     </span>
                   </label>
                   <button
                     onClick={() => onRemovePlayer(player.id)}
-                    className="text-red-600 hover:text-red-700 text-sm"
+                    className="text-red-400 hover:text-red-300 text-sm"
                   >
                     Remove
                   </button>
@@ -304,22 +304,22 @@ function SessionCard({
       {/* Waitlist */}
       {session.waitlist.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Waitlist</h4>
+          <h4 className="text-sm font-medium text-gray-300 mb-2">Waitlist</h4>
           <div className="space-y-2">
             {session.waitlist.map((player, index) => (
               <div
                 key={player.id}
-                className="flex items-center justify-between py-2 px-3 bg-orange-50 rounded"
+                className="flex items-center justify-between py-2 px-3 bg-orange-900/30 rounded"
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-medium">
+                  <span className="w-6 h-6 bg-orange-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
                     W{index + 1}
                   </span>
-                  <span className="text-gray-900">{player.name}</span>
+                  <span className="text-gray-100">{player.name}</span>
                 </div>
                 <button
                   onClick={() => onRemovePlayer(player.id)}
-                  className="text-red-600 hover:text-red-700 text-sm"
+                  className="text-red-400 hover:text-red-300 text-sm"
                 >
                   Remove
                 </button>

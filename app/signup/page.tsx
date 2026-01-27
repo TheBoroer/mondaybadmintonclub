@@ -103,21 +103,21 @@ export default function SignupPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-xl text-gray-600">Loading...</div>
+      <main className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-xl text-gray-300">Loading...</div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <main className="min-h-screen bg-gray-900 p-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Monday Badminton Club</h1>
+          <h1 className="text-2xl font-bold text-white">Monday Badminton Club</h1>
           <button
             onClick={handleLogout}
-            className="text-sm text-gray-600 hover:text-gray-800 underline"
+            className="text-sm text-gray-400 hover:text-white underline"
           >
             Logout
           </button>
@@ -125,11 +125,11 @@ export default function SignupPage() {
 
         {/* Session Info */}
         {session && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
+            <h2 className="text-xl font-semibold text-white mb-2">
               {formatDate(session.date)}
             </h2>
-            <div className="flex gap-4 text-sm text-gray-600">
+            <div className="flex gap-4 text-sm text-gray-400">
               <span>{session.courts} {session.courts === 1 ? 'Court' : 'Courts'}</span>
               <span>|</span>
               <span>{players.length}/{session.max_players} Players</span>
@@ -138,48 +138,48 @@ export default function SignupPage() {
         )}
 
         {/* Signup Form */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sign Up</h3>
+        <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4">Sign Up</h3>
           <form onSubmit={handleSignup} className="flex gap-3">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="Enter your name"
               required
             />
             <button
               type="submit"
               disabled={submitting || !name.trim()}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? 'Signing up...' : players.length >= (session?.max_players || 0) ? 'Join Waitlist' : 'Sign Up'}
             </button>
           </form>
-          {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+          {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
         </div>
 
         {/* Player List */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Signed Up ({players.length}/{session?.max_players || 0})
           </h3>
           {players.length === 0 ? (
             <p className="text-gray-500 text-center py-4">No players signed up yet</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-gray-700">
               {players.map((player, index) => (
                 <li key={player.id} className="py-3 flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-medium text-sm">
+                    <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
                       {index + 1}
                     </span>
-                    <span className="text-gray-900">{player.name}</span>
+                    <span className="text-gray-100">{player.name}</span>
                   </div>
                   <button
                     onClick={() => handleCancel(player.id)}
-                    className="text-red-600 hover:text-red-700 text-sm underline"
+                    className="text-red-400 hover:text-red-300 text-sm underline"
                   >
                     Cancel
                   </button>
@@ -191,22 +191,22 @@ export default function SignupPage() {
 
         {/* Waitlist */}
         {waitlist.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+            <h3 className="text-lg font-semibold text-white mb-4">
               Waitlist ({waitlist.length})
             </h3>
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-gray-700">
               {waitlist.map((player, index) => (
                 <li key={player.id} className="py-3 flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-medium text-sm">
+                    <span className="w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
                       W{index + 1}
                     </span>
-                    <span className="text-gray-900">{player.name}</span>
+                    <span className="text-gray-100">{player.name}</span>
                   </div>
                   <button
                     onClick={() => handleCancel(player.id)}
-                    className="text-red-600 hover:text-red-700 text-sm underline"
+                    className="text-red-400 hover:text-red-300 text-sm underline"
                   >
                     Cancel
                   </button>
