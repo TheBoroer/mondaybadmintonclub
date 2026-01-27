@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
-// GET - Get all players for a session
+// GET - Get all players for a session (excluding pin for security)
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { data: players, error } = await supabase
       .from('players')
-      .select('*')
+      .select('id, session_id, name, position, is_waitlist, paid, signed_up_at')
       .eq('session_id', sessionId)
       .order('position', { ascending: true })
 
@@ -31,10 +31,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()
-    const { sessionId, name } = await request.json()
+    const { sessionId, name, pin } = await request.json()
 
-    if (!sessionId || !name) {
-      return NextResponse.json({ error: 'Session ID and name required' }, { status: 400 })
+    if (!sessionId || !name || !pin) {
+      return NextResponse.json({ error: 'Session ID, name, and PIN required' }, { status: 400 })
+    }
+
+    // Validate PIN is exactly 4 digits
+    if (!/^\d{4}$/.test(pin)) {
+      return NextResponse.json({ error: 'PIN must be exactly 4 digits' }, { status: 400 })
     }
 
     // Get session to check max players
@@ -77,11 +82,12 @@ export async function POST(request: NextRequest) {
       .insert([{
         session_id: sessionId,
         name: name.trim(),
+        pin: pin,
         position: nextPosition,
         is_waitlist: isWaitlist,
         paid: false
       }])
-      .select()
+      .select('id, session_id, name, position, is_waitlist, paid, signed_up_at')
       .single()
 
     if (insertError) throw insertError
@@ -99,6 +105,8 @@ export async function DELETE(request: NextRequest) {
     const supabase = createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
     const playerId = searchParams.get('playerId')
+    const pin = searchParams.get('pin')
+    const adminBypass = searchParams.get('admin') === 'true'
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -112,6 +120,16 @@ export async function DELETE(request: NextRequest) {
       .single()
 
     if (getError) throw getError
+
+    // Verify PIN unless admin bypass
+    if (!adminBypass) {
+      if (!pin) {
+        return NextResponse.json({ error: 'PIN required' }, { status: 400 })
+      }
+      if (player.pin !== pin) {
+        return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
+      }
+    }
 
     const { session_id, is_waitlist } = player
 
@@ -201,7 +219,7 @@ export async function PATCH(request: NextRequest) {
       .from('players')
       .update({ paid })
       .eq('id', id)
-      .select()
+      .select('id, session_id, name, position, is_waitlist, paid, signed_up_at')
       .single()
 
     if (error) throw error

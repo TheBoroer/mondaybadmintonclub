@@ -9,9 +9,13 @@ export default function SignupPage() {
   const [players, setPlayers] = useState<Player[]>([])
   const [waitlist, setWaitlist] = useState<Player[]>([])
   const [name, setName] = useState('')
+  const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [cancelPin, setCancelPin] = useState('')
+  const [cancelError, setCancelError] = useState('')
   const router = useRouter()
 
   const fetchData = useCallback(async () => {
@@ -43,7 +47,7 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!session || !name.trim()) return
+    if (!session || !name.trim() || !pin) return
 
     setSubmitting(true)
     setError('')
@@ -52,33 +56,50 @@ export default function SignupPage() {
       const res = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, name: name.trim() }),
+        body: JSON.stringify({ sessionId: session.id, name: name.trim(), pin }),
       })
 
-      if (!res.ok) throw new Error('Failed to sign up')
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to sign up')
+      }
 
       setName('')
+      setPin('')
       await fetchData()
-    } catch {
-      setError('Failed to sign up. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign up. Please try again.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleCancel = async (playerId: string) => {
-    if (!confirm('Are you sure you want to cancel your signup?')) return
+  const handleCancelClick = (playerId: string) => {
+    setCancellingId(playerId)
+    setCancelPin('')
+    setCancelError('')
+  }
+
+  const handleCancelConfirm = async () => {
+    if (!cancellingId || !cancelPin) return
 
     try {
-      const res = await fetch(`/api/players?playerId=${playerId}`, {
+      const res = await fetch(`/api/players?playerId=${cancellingId}&pin=${cancelPin}`, {
         method: 'DELETE',
       })
 
-      if (!res.ok) throw new Error('Failed to cancel')
+      if (!res.ok) {
+        const data = await res.json()
+        setCancelError(data.error || 'Failed to cancel')
+        return
+      }
 
+      setCancellingId(null)
+      setCancelPin('')
+      setCancelError('')
       await fetchData()
     } catch {
-      setError('Failed to cancel. Please try again.')
+      setCancelError('Failed to cancel. Please try again.')
     }
   }
 
@@ -140,22 +161,38 @@ export default function SignupPage() {
         {/* Signup Form */}
         <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
           <h3 className="text-lg font-semibold text-white mb-4">Sign Up</h3>
-          <form onSubmit={handleSignup} className="flex gap-3">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Enter your name"
-              required
-            />
-            <button
-              type="submit"
-              disabled={submitting || !name.trim()}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {submitting ? 'Signing up...' : players.length >= (session?.max_players || 0) ? 'Join Waitlist' : 'Sign Up'}
-            </button>
+          <form onSubmit={handleSignup} className="space-y-3">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Your name"
+                required
+              />
+              <input
+                type="text"
+                value={pin}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                  setPin(val)
+                }}
+                className="w-28 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-center"
+                placeholder="4-digit PIN"
+                inputMode="numeric"
+                maxLength={4}
+                required
+              />
+              <button
+                type="submit"
+                disabled={submitting || !name.trim() || pin.length !== 4}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting ? 'Signing up...' : players.length >= (session?.max_players || 0) ? 'Join Waitlist' : 'Sign Up'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">Last 4 digits of your phone number (used to cancel)</p>
           </form>
           {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
         </div>
@@ -170,19 +207,52 @@ export default function SignupPage() {
           ) : (
             <ul className="divide-y divide-gray-700">
               {players.map((player, index) => (
-                <li key={player.id} className="py-3 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
-                      {index + 1}
-                    </span>
-                    <span className="text-gray-100">{player.name}</span>
+                <li key={player.id} className="py-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
+                        {index + 1}
+                      </span>
+                      <span className="text-gray-100">{player.name}</span>
+                    </div>
+                    <button
+                      onClick={() => handleCancelClick(player.id)}
+                      className="text-red-400 hover:text-red-300 text-sm underline"
+                    >
+                      Cancel
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleCancel(player.id)}
-                    className="text-red-400 hover:text-red-300 text-sm underline"
-                  >
-                    Cancel
-                  </button>
+                  {cancellingId === player.id && (
+                    <div className="mt-3 ml-11 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={cancelPin}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                          setCancelPin(val)
+                        }}
+                        className="w-24 px-3 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm text-center"
+                        placeholder="PIN"
+                        inputMode="numeric"
+                        maxLength={4}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleCancelConfirm}
+                        disabled={cancelPin.length !== 4}
+                        className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-500 disabled:opacity-50"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => setCancellingId(null)}
+                        className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-500"
+                      >
+                        Cancel
+                      </button>
+                      {cancelError && <span className="text-red-400 text-xs">{cancelError}</span>}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -197,19 +267,52 @@ export default function SignupPage() {
             </h3>
             <ul className="divide-y divide-gray-700">
               {waitlist.map((player, index) => (
-                <li key={player.id} className="py-3 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
-                      W{index + 1}
-                    </span>
-                    <span className="text-gray-100">{player.name}</span>
+                <li key={player.id} className="py-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
+                        W{index + 1}
+                      </span>
+                      <span className="text-gray-100">{player.name}</span>
+                    </div>
+                    <button
+                      onClick={() => handleCancelClick(player.id)}
+                      className="text-red-400 hover:text-red-300 text-sm underline"
+                    >
+                      Cancel
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleCancel(player.id)}
-                    className="text-red-400 hover:text-red-300 text-sm underline"
-                  >
-                    Cancel
-                  </button>
+                  {cancellingId === player.id && (
+                    <div className="mt-3 ml-11 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={cancelPin}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                          setCancelPin(val)
+                        }}
+                        className="w-24 px-3 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm text-center"
+                        placeholder="PIN"
+                        inputMode="numeric"
+                        maxLength={4}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleCancelConfirm}
+                        disabled={cancelPin.length !== 4}
+                        className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-500 disabled:opacity-50"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => setCancellingId(null)}
+                        className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-500"
+                      >
+                        Cancel
+                      </button>
+                      {cancelError && <span className="text-red-400 text-xs">{cancelError}</span>}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

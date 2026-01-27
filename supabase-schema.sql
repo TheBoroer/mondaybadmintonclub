@@ -16,6 +16,7 @@ CREATE TABLE players (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
+  pin VARCHAR(4) NOT NULL,
   position INTEGER NOT NULL,
   is_waitlist BOOLEAN DEFAULT FALSE,
   paid BOOLEAN DEFAULT FALSE,

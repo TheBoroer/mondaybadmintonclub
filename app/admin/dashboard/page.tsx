@@ -91,7 +91,7 @@ export default function AdminDashboard() {
     if (!confirm('Are you sure you want to remove this player?')) return
 
     try {
-      const res = await fetch(`/api/players?playerId=${playerId}`, {
+      const res = await fetch(`/api/players?playerId=${playerId}&admin=true`, {
         method: 'DELETE',
       })
 

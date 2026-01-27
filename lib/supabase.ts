@@ -43,6 +43,7 @@ export interface Player {
   id: string
   session_id: string
   name: string
+  pin?: string // Not returned in public queries for security
   position: number
   is_waitlist: boolean
   paid: boolean
