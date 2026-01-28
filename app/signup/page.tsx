@@ -4,10 +4,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Session, Player } from '@/lib/supabase'
 
+interface SessionWithPlayers extends Session {
+  players: Player[]
+  waitlist: Player[]
+}
+
 export default function SignupPage() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [players, setPlayers] = useState<Player[]>([])
-  const [waitlist, setWaitlist] = useState<Player[]>([])
+  const [sessions, setSessions] = useState<SessionWithPlayers[]>([])
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(true)
@@ -20,34 +24,47 @@ export default function SignupPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      // Fetch session
+      // Fetch all active sessions
       const sessionRes = await fetch('/api/sessions')
-      if (!sessionRes.ok) throw new Error('Failed to load session')
-      const sessionData = await sessionRes.json()
-      setSession(sessionData)
+      if (!sessionRes.ok) throw new Error('Failed to load sessions')
+      const sessionsData: Session[] = await sessionRes.json()
 
-      // Fetch players
-      const playersRes = await fetch(`/api/players?sessionId=${sessionData.id}`)
-      if (!playersRes.ok) throw new Error('Failed to load players')
-      const playersData: Player[] = await playersRes.json()
+      // Fetch players for each session
+      const sessionsWithPlayers = await Promise.all(
+        sessionsData.map(async (session) => {
+          const playersRes = await fetch(`/api/players?sessionId=${session.id}`)
+          const playersData: Player[] = playersRes.ok ? await playersRes.json() : []
+          return {
+            ...session,
+            players: playersData.filter(p => !p.is_waitlist),
+            waitlist: playersData.filter(p => p.is_waitlist),
+          }
+        })
+      )
 
-      setPlayers(playersData.filter(p => !p.is_waitlist))
-      setWaitlist(playersData.filter(p => p.is_waitlist))
+      setSessions(sessionsWithPlayers)
+
+      // Select first session by default if none selected
+      if (!selectedSessionId && sessionsWithPlayers.length > 0) {
+        setSelectedSessionId(sessionsWithPlayers[0].id)
+      }
     } catch (err) {
       setError('Failed to load data')
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedSessionId])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
+  const selectedSession = sessions.find(s => s.id === selectedSessionId)
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!session || !name.trim() || !pin) return
+    if (!selectedSession || !name.trim() || !pin) return
 
     setSubmitting(true)
     setError('')
@@ -56,7 +73,7 @@ export default function SignupPage() {
       const res = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, name: name.trim(), pin }),
+        body: JSON.stringify({ sessionId: selectedSession.id, name: name.trim(), pin }),
       })
 
       if (!res.ok) {
@@ -122,6 +139,15 @@ export default function SignupPage() {
     })
   }
 
+  const formatShortDate = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00')
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-gray-900">
@@ -144,16 +170,38 @@ export default function SignupPage() {
           </button>
         </div>
 
+        {/* Session Tabs */}
+        {sessions.length > 1 && (
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {sessions.map((session) => (
+              <button
+                key={session.id}
+                onClick={() => setSelectedSessionId(session.id)}
+                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                  selectedSessionId === session.id
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                {formatShortDate(session.date)}
+                <span className="ml-2 text-xs opacity-75">
+                  ({session.players.length}/{session.max_players})
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Session Info */}
-        {session && (
+        {selectedSession && (
           <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
             <h2 className="text-xl font-semibold text-white mb-2">
-              {formatDate(session.date)}
+              {formatDate(selectedSession.date)}
             </h2>
             <div className="flex gap-4 text-sm text-gray-400">
-              <span>{session.courts} {session.courts === 1 ? 'Court' : 'Courts'}</span>
+              <span>{selectedSession.courts} {selectedSession.courts === 1 ? 'Court' : 'Courts'}</span>
               <span>|</span>
-              <span>{players.length}/{session.max_players} Players</span>
+              <span>{selectedSession.players.length}/{selectedSession.max_players} Players</span>
             </div>
           </div>
         )}
@@ -189,7 +237,7 @@ export default function SignupPage() {
                 disabled={submitting || !name.trim() || pin.length !== 4}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
-                {submitting ? '...' : players.length >= (session?.max_players || 0) ? 'Join Waitlist' : 'Sign Up'}
+                {submitting ? '...' : (selectedSession?.players.length ?? 0) >= (selectedSession?.max_players || 0) ? 'Join Waitlist' : 'Sign Up'}
               </button>
             </div>
           </form>
@@ -197,75 +245,77 @@ export default function SignupPage() {
         </div>
 
         {/* Player List */}
-        <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
-          <h3 className="text-lg font-semibold text-white mb-4">
-            Signed Up ({players.length}/{session?.max_players || 0})
-          </h3>
-          {players.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">No players signed up yet</p>
-          ) : (
-            <ul className="divide-y divide-gray-700">
-              {players.map((player, index) => (
-                <li key={player.id} className="py-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
-                        {index + 1}
-                      </span>
-                      <span className="text-gray-100">{player.name}</span>
-                    </div>
-                    <button
-                      onClick={() => handleCancelClick(player.id)}
-                      className="text-red-400 hover:text-red-300 text-sm underline"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  {cancellingId === player.id && (
-                    <div className="mt-3 ml-11 flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={cancelPin}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, '').slice(0, 4)
-                          setCancelPin(val)
-                        }}
-                        className="w-24 px-3 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm text-center"
-                        placeholder="PIN"
-                        inputMode="numeric"
-                        maxLength={4}
-                        autoFocus
-                      />
+        {selectedSession && (
+          <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Signed Up ({selectedSession.players.length}/{selectedSession.max_players})
+            </h3>
+            {selectedSession.players.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No players signed up yet</p>
+            ) : (
+              <ul className="divide-y divide-gray-700">
+                {selectedSession.players.map((player, index) => (
+                  <li key={player.id} className="py-3">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
+                          {index + 1}
+                        </span>
+                        <span className="text-gray-100">{player.name}</span>
+                      </div>
                       <button
-                        onClick={handleCancelConfirm}
-                        disabled={cancelPin.length !== 4}
-                        className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-500 disabled:opacity-50"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => setCancellingId(null)}
-                        className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-500"
+                        onClick={() => handleCancelClick(player.id)}
+                        className="text-red-400 hover:text-red-300 text-sm underline"
                       >
                         Cancel
                       </button>
-                      {cancelError && <span className="text-red-400 text-xs">{cancelError}</span>}
                     </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                    {cancellingId === player.id && (
+                      <div className="mt-3 ml-11 flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={cancelPin}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                            setCancelPin(val)
+                          }}
+                          className="w-24 px-3 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm text-center"
+                          placeholder="PIN"
+                          inputMode="numeric"
+                          maxLength={4}
+                          autoFocus
+                        />
+                        <button
+                          onClick={handleCancelConfirm}
+                          disabled={cancelPin.length !== 4}
+                          className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-500 disabled:opacity-50"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setCancellingId(null)}
+                          className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-500"
+                        >
+                          Cancel
+                        </button>
+                        {cancelError && <span className="text-red-400 text-xs">{cancelError}</span>}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Waitlist */}
-        {waitlist.length > 0 && (
+        {selectedSession && selectedSession.waitlist.length > 0 && (
           <div className="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
             <h3 className="text-lg font-semibold text-white mb-4">
-              Waitlist ({waitlist.length})
+              Waitlist ({selectedSession.waitlist.length})
             </h3>
             <ul className="divide-y divide-gray-700">
-              {waitlist.map((player, index) => (
+              {selectedSession.waitlist.map((player, index) => (
                 <li key={player.id} className="py-3">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">

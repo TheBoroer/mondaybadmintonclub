@@ -13,6 +13,9 @@ export default function AdminDashboard() {
   const [sessions, setSessions] = useState<SessionWithPlayers[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [newSessionDate, setNewSessionDate] = useState('')
+  const [newSessionCourts, setNewSessionCourts] = useState(2)
+  const [creating, setCreating] = useState(false)
   const router = useRouter()
 
   const fetchData = useCallback(async () => {
@@ -132,6 +135,31 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleCreateSession = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newSessionDate) return
+
+    setCreating(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: newSessionDate, courts: newSessionCourts }),
+      })
+
+      if (!res.ok) throw new Error('Failed to create session')
+      setNewSessionDate('')
+      setNewSessionCourts(2)
+      await fetchData()
+    } catch {
+      setError('Failed to create session')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00')
     return date.toLocaleDateString('en-US', {
@@ -150,7 +178,7 @@ export default function AdminDashboard() {
     )
   }
 
-  const activeSessions = sessions.filter(s => !s.archived)
+  const activeSessions = sessions.filter(s => !s.archived).sort((a, b) => a.date.localeCompare(b.date))
   const archivedSessions = sessions.filter(s => s.archived)
 
   return (
@@ -172,6 +200,43 @@ export default function AdminDashboard() {
             {error}
           </div>
         )}
+
+        {/* Create Session Form */}
+        <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4">Create New Session</h3>
+          <form onSubmit={handleCreateSession} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={newSessionDate}
+                  onChange={(e) => setNewSessionDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Courts</label>
+                <select
+                  value={newSessionCourts}
+                  onChange={(e) => setNewSessionCourts(parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value={2}>2 Courts (14 max)</option>
+                  <option value={3}>3 Courts (20 max)</option>
+                </select>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={creating || !newSessionDate}
+              className="w-full sm:w-auto px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {creating ? 'Creating...' : 'Create Session'}
+            </button>
+          </form>
+        </div>
 
         {/* Active Sessions */}
         <h2 className="text-xl font-semibold text-white mb-4">Active Sessions</h2>

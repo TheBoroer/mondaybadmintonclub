@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
-// Get the next Monday's date
+// Get the next Monday's date (in local timezone)
 function getNextMonday(): string {
   const today = new Date()
   const dayOfWeek = today.getDay()
   const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek
   const nextMonday = new Date(today)
   nextMonday.setDate(today.getDate() + daysUntilMonday)
-  return nextMonday.toISOString().split('T')[0]
+  // Use local date parts to avoid timezone issues
+  const year = nextMonday.getFullYear()
+  const month = String(nextMonday.getMonth() + 1).padStart(2, '0')
+  const day = String(nextMonday.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 // GET - Get current session or create one if it doesn't exist
@@ -29,32 +33,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(sessions)
     }
 
-    // For user view, get current non-archived session
+    // For user view, get all non-archived sessions
     const mondayDate = getNextMonday()
 
-    // Try to get existing session
-    let { data: session, error } = await supabase
+    // First, ensure a session exists for the next Monday
+    const { data: existingMonday } = await supabase
       .from('sessions')
       .select('*')
       .eq('date', mondayDate)
       .eq('archived', false)
       .single()
 
-    // If no session exists, create one
-    if (!session) {
-      const { data: newSession, error: createError } = await supabase
+    // If no Monday session exists, create one
+    if (!existingMonday) {
+      await supabase
         .from('sessions')
         .insert([{ date: mondayDate, courts: 2, max_players: 14 }])
-        .select()
-        .single()
-
-      if (createError) throw createError
-      session = newSession
     }
 
-    if (error && error.code !== 'PGRST116') throw error
+    // Get all active sessions, ordered by date
+    const { data: sessions, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('archived', false)
+      .gte('date', new Date().toISOString().split('T')[0])
+      .order('date', { ascending: true })
 
-    return NextResponse.json(session)
+    if (error) throw error
+
+    return NextResponse.json(sessions)
   } catch (error) {
     console.error('Session error:', error)
     return NextResponse.json({ error: 'Failed to get session' }, { status: 500 })
