@@ -178,8 +178,10 @@ export default function AdminDashboard() {
     )
   }
 
-  const activeSessions = sessions.filter(s => !s.archived).sort((a, b) => a.date.localeCompare(b.date))
-  const archivedSessions = sessions.filter(s => s.archived)
+  const today = new Date().toISOString().split('T')[0]
+  const upcomingSessions = sessions.filter(s => !s.archived && s.date >= today).sort((a, b) => a.date.localeCompare(b.date))
+  const pastSessions = sessions.filter(s => !s.archived && s.date < today).sort((a, b) => b.date.localeCompare(a.date))
+  const archivedSessions = sessions.filter(s => s.archived).sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <main className="min-h-screen bg-gray-900 p-4">
@@ -238,12 +240,12 @@ export default function AdminDashboard() {
           </form>
         </div>
 
-        {/* Active Sessions */}
-        <h2 className="text-xl font-semibold text-white mb-4">Active Sessions</h2>
-        {activeSessions.length === 0 ? (
-          <p className="text-gray-500 mb-8">No active sessions</p>
+        {/* Upcoming Sessions */}
+        <h2 className="text-xl font-semibold text-white mb-4">Upcoming Sessions</h2>
+        {upcomingSessions.length === 0 ? (
+          <p className="text-gray-500 mb-8">No upcoming sessions</p>
         ) : (
-          activeSessions.map((session) => (
+          upcomingSessions.map((session) => (
             <SessionCard
               key={session.id}
               session={session}
@@ -254,6 +256,25 @@ export default function AdminDashboard() {
               formatDate={formatDate}
             />
           ))
+        )}
+
+        {/* Past Sessions */}
+        {pastSessions.length > 0 && (
+          <>
+            <h2 className="text-xl font-semibold text-white mb-4 mt-8">Past Sessions</h2>
+            {pastSessions.map((session) => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                onCourtChange={handleCourtChange}
+                onTogglePaid={handleTogglePaid}
+                onRemovePlayer={handleRemovePlayer}
+                onArchive={handleArchiveSession}
+                onDelete={handleDeleteSession}
+                formatDate={formatDate}
+              />
+            ))}
+          </>
         )}
 
         {/* Archived Sessions */}
