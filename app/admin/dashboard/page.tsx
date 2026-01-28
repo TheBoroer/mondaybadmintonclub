@@ -117,6 +117,21 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this session? This cannot be undone.')) return
+
+    try {
+      const res = await fetch(`/api/sessions?sessionId=${sessionId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error('Failed to delete')
+      await fetchData()
+    } catch {
+      setError('Failed to delete session')
+    }
+  }
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00')
     return date.toLocaleDateString('en-US', {
@@ -188,6 +203,7 @@ export default function AdminDashboard() {
                 onTogglePaid={handleTogglePaid}
                 onRemovePlayer={handleRemovePlayer}
                 onArchive={handleArchiveSession}
+                onDelete={handleDeleteSession}
                 formatDate={formatDate}
                 isArchived
               />
@@ -205,6 +221,7 @@ interface SessionCardProps {
   onTogglePaid: (playerId: string, currentPaid: boolean) => void
   onRemovePlayer: (playerId: string) => void
   onArchive: (id: string, archived: boolean) => void
+  onDelete?: (id: string) => void
   formatDate: (dateStr: string) => string
   isArchived?: boolean
 }
@@ -215,6 +232,7 @@ function SessionCard({
   onTogglePaid,
   onRemovePlayer,
   onArchive,
+  onDelete,
   formatDate,
   isArchived = false,
 }: SessionCardProps) {
@@ -255,6 +273,15 @@ function SessionCard({
           >
             {isArchived ? 'Unarchive' : 'Archive'}
           </button>
+          {/* Delete Button (archived only) */}
+          {isArchived && onDelete && (
+            <button
+              onClick={() => onDelete(session.id)}
+              className="text-sm px-3 py-1 rounded bg-red-900/50 text-red-400 hover:bg-red-900/70"
+            >
+              Delete
+            </button>
+          )}
         </div>
       </div>
 

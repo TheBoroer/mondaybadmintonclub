@@ -162,15 +162,15 @@ export default function SignupPage() {
         <div className="bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-700">
           <h3 className="text-lg font-semibold text-white mb-4">Sign Up</h3>
           <form onSubmit={handleSignup} className="space-y-3">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Your name"
+              required
+            />
             <div className="flex gap-3">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Your name"
-                required
-              />
               <input
                 type="text"
                 value={pin}
@@ -178,8 +178,8 @@ export default function SignupPage() {
                   const val = e.target.value.replace(/\D/g, '').slice(0, 4)
                   setPin(val)
                 }}
-                className="w-28 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-center"
-                placeholder="4-digit PIN"
+                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Last 4 digits of phone number"
                 inputMode="numeric"
                 maxLength={4}
                 required
@@ -187,12 +187,11 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={submitting || !name.trim() || pin.length !== 4}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
-                {submitting ? 'Signing up...' : players.length >= (session?.max_players || 0) ? 'Join Waitlist' : 'Sign Up'}
+                {submitting ? '...' : players.length >= (session?.max_players || 0) ? 'Join Waitlist' : 'Sign Up'}
               </button>
             </div>
-            <p className="text-xs text-gray-500">Last 4 digits of your phone number (used to cancel)</p>
           </form>
           {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
         </div>
@@ -318,6 +317,16 @@ export default function SignupPage() {
             </ul>
           </div>
         )}
+
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <a
+            href="/admin"
+            className="text-sm text-gray-500 hover:text-indigo-400"
+          >
+            Admin Login
+          </a>
+        </div>
       </div>
     </main>
   )

@@ -6,7 +6,26 @@ import {
   setAdminToken,
   clearUserToken,
   clearAdminToken,
+  isUserAuthenticated,
+  isAdminAuthenticated,
 } from '@/lib/auth'
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const type = searchParams.get('type')
+
+  if (type === 'user') {
+    const authenticated = await isUserAuthenticated()
+    return NextResponse.json({ authenticated })
+  }
+
+  if (type === 'admin') {
+    const authenticated = await isAdminAuthenticated()
+    return NextResponse.json({ authenticated })
+  }
+
+  return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+}
 
 export async function POST(request: NextRequest) {
   try {

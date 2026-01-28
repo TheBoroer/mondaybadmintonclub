@@ -1,13 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
   const router = useRouter()
+
+  useEffect(() => {
+    fetch('/api/auth?type=admin')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated) {
+          router.replace('/admin/dashboard')
+        } else {
+          setChecking(false)
+        }
+      })
+      .catch(() => setChecking(false))
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,6 +48,14 @@ export default function AdminLoginPage() {
     }
   }
 
+  if (checking) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+        <div className="text-gray-400">Loading...</div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
       <div className="w-full max-w-md">
@@ -58,6 +80,7 @@ export default function AdminLoginPage() {
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 placeholder="Enter admin password"
                 required
+                autoFocus
               />
             </div>
 

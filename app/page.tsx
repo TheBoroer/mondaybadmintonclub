@@ -1,37 +1,59 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/auth?type=user")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated) {
+          router.replace("/signup");
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => setChecking(false));
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, type: 'user' }),
-      })
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, type: "user" }),
+      });
 
       if (res.ok) {
-        router.push('/signup')
+        router.push("/signup");
       } else {
-        const data = await res.json()
-        setError(data.error || 'Invalid password')
+        const data = await res.json();
+        setError(data.error || "Invalid password");
       }
     } catch {
-      setError('Something went wrong')
+      setError("Something went wrong");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
+  };
+
+  if (checking) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+        <div className="text-gray-400">Loading...</div>
+      </main>
+    );
   }
 
   return (
@@ -42,12 +64,14 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold text-white mb-2">
               Monday Badminton Club
             </h1>
-            <p className="text-gray-400">Enter the password to sign up</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Password
               </label>
               <input
@@ -58,6 +82,7 @@ export default function LoginPage() {
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 placeholder="Enter password"
                 required
+                autoFocus
               />
             </div>
 
@@ -70,7 +95,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Checking...' : 'Enter'}
+              {loading ? "Checking..." : "Enter"}
             </button>
           </form>
 
@@ -85,5 +110,5 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

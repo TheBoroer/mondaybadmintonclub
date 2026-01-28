@@ -114,3 +114,37 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to update session' }, { status: 500 })
   }
 }
+
+// DELETE - Delete a session (admin only)
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = createServerSupabaseClient()
+    const { searchParams } = new URL(request.url)
+    const sessionId = searchParams.get('sessionId')
+
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 })
+    }
+
+    // First delete all players associated with this session
+    const { error: playersError } = await supabase
+      .from('players')
+      .delete()
+      .eq('session_id', sessionId)
+
+    if (playersError) throw playersError
+
+    // Then delete the session
+    const { error: sessionError } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('id', sessionId)
+
+    if (sessionError) throw sessionError
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete session error:', error)
+    return NextResponse.json({ error: 'Failed to delete session' }, { status: 500 })
+  }
+}

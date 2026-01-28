@@ -21,7 +21,7 @@ A Next.js web app for managing weekly badminton club signups with waitlist funct
 ### 1. Create a Supabase Project
 
 1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Run the SQL schema from `supabase-schema.sql` in the SQL Editor
+2. Get your database connection string from Settings > Database > Connection string (URI)
 
 ### 2. Configure Environment Variables
 
@@ -35,6 +35,7 @@ Required variables:
 - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` - Your Supabase publishable key
 - `SUPABASE_SECRET_KEY` - Your Supabase secret key
+- `DATABASE_URL` - Your Supabase database connection string (for migrations)
 - `USER_PASSWORD` - Shared password for player signup
 - `ADMIN_PASSWORD` - Admin dashboard password
 - `CRON_SECRET` - Secret for securing the cron endpoint (any random string)
@@ -45,7 +46,18 @@ Required variables:
 npm install
 ```
 
-### 4. Run Development Server
+### 4. Run Database Migrations
+
+```bash
+npm run migrate
+```
+
+This will:
+- Create a backup of existing data (saved to `/backups`)
+- Create the required tables if they don't exist
+- Run any pending migrations
+
+### 5. Run Development Server
 
 ```bash
 npm run dev

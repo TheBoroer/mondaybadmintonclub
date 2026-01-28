@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.2",
@@ -24,6 +25,7 @@
     "eslint-config-next": "16.1.6",
     "postgres": "^3.4.8",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
