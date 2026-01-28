@@ -148,59 +148,82 @@ export async function DELETE(request: NextRequest) {
 
     if (deleteError) throw deleteError
 
-    // If the removed player was NOT on the waitlist, promote first waitlist player
+    // If the removed player was NOT on the waitlist, consider promoting first waitlist player
     if (!is_waitlist) {
-      // Get first waitlist player
-      const { data: waitlistPlayers, error: waitlistError } = await supabase
+      // Get session max_players
+      const { data: session, error: sessionError } = await supabase
+        .from('sessions')
+        .select('max_players')
+        .eq('id', session_id)
+        .single()
+
+      if (sessionError) throw sessionError
+
+      // Count current main list players (after deletion)
+      const { data: currentPlayers, error: countError } = await supabase
         .from('players')
-        .select('*')
+        .select('id')
         .eq('session_id', session_id)
-        .eq('is_waitlist', true)
-        .order('position', { ascending: true })
-        .limit(1)
+        .eq('is_waitlist', false)
 
-      if (waitlistError) throw waitlistError
+      if (countError) throw countError
 
-      if (waitlistPlayers && waitlistPlayers.length > 0) {
-        const promotedPlayer = waitlistPlayers[0]
+      const currentCount = currentPlayers?.length || 0
 
-        // Get the max position in the main list
-        const { data: mainPlayers, error: mainError } = await supabase
+      // Only auto-promote if we're below max_players
+      if (currentCount < session.max_players) {
+        // Get first waitlist player
+        const { data: waitlistPlayers, error: waitlistError } = await supabase
           .from('players')
-          .select('position')
-          .eq('session_id', session_id)
-          .eq('is_waitlist', false)
-          .order('position', { ascending: false })
-          .limit(1)
-
-        if (mainError) throw mainError
-
-        const newPosition = mainPlayers && mainPlayers.length > 0 ? mainPlayers[0].position + 1 : 1
-
-        // Promote the waitlist player
-        const { error: promoteError } = await supabase
-          .from('players')
-          .update({ is_waitlist: false, position: newPosition })
-          .eq('id', promotedPlayer.id)
-
-        if (promoteError) throw promoteError
-
-        // Reorder remaining waitlist
-        const { data: remainingWaitlist, error: remainingError } = await supabase
-          .from('players')
-          .select('id')
+          .select('*')
           .eq('session_id', session_id)
           .eq('is_waitlist', true)
           .order('position', { ascending: true })
+          .limit(1)
 
-        if (remainingError) throw remainingError
+        if (waitlistError) throw waitlistError
 
-        // Update positions
-        for (let i = 0; i < (remainingWaitlist?.length || 0); i++) {
-          await supabase
+        if (waitlistPlayers && waitlistPlayers.length > 0) {
+          const promotedPlayer = waitlistPlayers[0]
+
+          // Get the max position in the main list
+          const { data: mainPlayers, error: mainError } = await supabase
             .from('players')
-            .update({ position: i + 1 })
-            .eq('id', remainingWaitlist![i].id)
+            .select('position')
+            .eq('session_id', session_id)
+            .eq('is_waitlist', false)
+            .order('position', { ascending: false })
+            .limit(1)
+
+          if (mainError) throw mainError
+
+          const newPosition = mainPlayers && mainPlayers.length > 0 ? mainPlayers[0].position + 1 : 1
+
+          // Promote the waitlist player
+          const { error: promoteError } = await supabase
+            .from('players')
+            .update({ is_waitlist: false, position: newPosition })
+            .eq('id', promotedPlayer.id)
+
+          if (promoteError) throw promoteError
+
+          // Reorder remaining waitlist
+          const { data: remainingWaitlist, error: remainingError } = await supabase
+            .from('players')
+            .select('id')
+            .eq('session_id', session_id)
+            .eq('is_waitlist', true)
+            .order('position', { ascending: true })
+
+          if (remainingError) throw remainingError
+
+          // Update positions
+          for (let i = 0; i < (remainingWaitlist?.length || 0); i++) {
+            await supabase
+              .from('players')
+              .update({ position: i + 1 })
+              .eq('id', remainingWaitlist![i].id)
+          }
         }
       }
     }
