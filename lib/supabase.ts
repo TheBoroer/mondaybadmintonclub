@@ -35,6 +35,7 @@ export interface Session {
   date: string
   courts: number
   max_players: number
+  cost: number
   created_at: string
   archived: boolean
 }

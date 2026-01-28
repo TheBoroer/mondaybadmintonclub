@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     if (!existingMonday) {
       await supabase
         .from('sessions')
-        .insert([{ date: mondayDate, courts: 2, max_players: 14 }])
+        .insert([{ date: mondayDate, courts: 2, max_players: 14, cost: 0 }])
     }
 
     // Get all active sessions, ordered by date
@@ -72,13 +72,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()
-    const { date, courts } = await request.json()
+    const { date, courts, cost = 0 } = await request.json()
 
     const max_players = courts === 3 ? 20 : 14
 
     const { data: session, error } = await supabase
       .from('sessions')
-      .insert([{ date, courts, max_players }])
+      .insert([{ date, courts, max_players, cost }])
       .select()
       .single()
 
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()
-    const { id, courts, archived } = await request.json()
+    const { id, courts, archived, cost } = await request.json()
 
     const updates: Record<string, unknown> = {}
     if (courts !== undefined) {
@@ -104,6 +104,9 @@ export async function PATCH(request: NextRequest) {
     }
     if (archived !== undefined) {
       updates.archived = archived
+    }
+    if (cost !== undefined) {
+      updates.cost = cost
     }
 
     const { data: session, error } = await supabase

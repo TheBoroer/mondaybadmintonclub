@@ -31,15 +31,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()
-    const { sessionId, name, pin } = await request.json()
+    const { sessionId, name, pin, admin } = await request.json()
 
-    if (!sessionId || !name || !pin) {
-      return NextResponse.json({ error: 'Session ID, name, and PIN required' }, { status: 400 })
-    }
+    // Admin can add players without PIN
+    if (admin) {
+      if (!sessionId || !name) {
+        return NextResponse.json({ error: 'Session ID and name required' }, { status: 400 })
+      }
+    } else {
+      if (!sessionId || !name || !pin) {
+        return NextResponse.json({ error: 'Session ID, name, and PIN required' }, { status: 400 })
+      }
 
-    // Validate PIN is exactly 4 digits
-    if (!/^\d{4}$/.test(pin)) {
-      return NextResponse.json({ error: 'PIN must be exactly 4 digits' }, { status: 400 })
+      // Validate PIN is exactly 4 digits
+      if (!/^\d{4}$/.test(pin)) {
+        return NextResponse.json({ error: 'PIN must be exactly 4 digits' }, { status: 400 })
+      }
     }
 
     // Get session to check max players
@@ -82,7 +89,7 @@ export async function POST(request: NextRequest) {
       .insert([{
         session_id: sessionId,
         name: name.trim(),
-        pin: pin,
+        pin: pin || null,
         position: nextPosition,
         is_waitlist: isWaitlist,
         paid: false
@@ -205,16 +212,76 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// PATCH - Update player (e.g., mark as paid)
+// PATCH - Update player (e.g., mark as paid, promote from waitlist)
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()
-    const { id, paid } = await request.json()
+    const { id, paid, promote } = await request.json()
 
     if (!id) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
     }
 
+    // Handle promotion from waitlist
+    if (promote) {
+      // Get the player to promote
+      const { data: playerToPromote, error: getError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (getError) throw getError
+
+      if (!playerToPromote.is_waitlist) {
+        return NextResponse.json({ error: 'Player is not on waitlist' }, { status: 400 })
+      }
+
+      // Get the max position in the main list
+      const { data: mainPlayers, error: mainError } = await supabase
+        .from('players')
+        .select('position')
+        .eq('session_id', playerToPromote.session_id)
+        .eq('is_waitlist', false)
+        .order('position', { ascending: false })
+        .limit(1)
+
+      if (mainError) throw mainError
+
+      const newPosition = mainPlayers && mainPlayers.length > 0 ? mainPlayers[0].position + 1 : 1
+
+      // Promote the player
+      const { data: promoted, error: promoteError } = await supabase
+        .from('players')
+        .update({ is_waitlist: false, position: newPosition })
+        .eq('id', id)
+        .select('id, session_id, name, position, is_waitlist, paid, signed_up_at')
+        .single()
+
+      if (promoteError) throw promoteError
+
+      // Reorder remaining waitlist
+      const { data: remainingWaitlist, error: remainingError } = await supabase
+        .from('players')
+        .select('id')
+        .eq('session_id', playerToPromote.session_id)
+        .eq('is_waitlist', true)
+        .order('position', { ascending: true })
+
+      if (remainingError) throw remainingError
+
+      // Update positions
+      for (let i = 0; i < (remainingWaitlist?.length || 0); i++) {
+        await supabase
+          .from('players')
+          .update({ position: i + 1 })
+          .eq('id', remainingWaitlist![i].id)
+      }
+
+      return NextResponse.json(promoted)
+    }
+
+    // Regular update (paid status)
     const { data: player, error } = await supabase
       .from('players')
       .update({ paid })

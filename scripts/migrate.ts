@@ -50,6 +50,14 @@ CREATE INDEX IF NOT EXISTS idx_sessions_archived ON sessions(archived);
 ALTER TABLE players ADD COLUMN IF NOT EXISTS pin VARCHAR(4) NOT NULL DEFAULT '0000';
     `,
   },
+  {
+    name: '003_add_session_cost',
+    description: 'Add cost column to sessions table for tracking session fees',
+    sql: `
+-- Add cost column for session pricing
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS cost DECIMAL(10,2) DEFAULT 0;
+    `,
+  },
 ]
 
 async function createBackup(sql: postgres.Sql) {
